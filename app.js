@@ -34,6 +34,8 @@ let lastData = load(LS.tasks, null);
 let cfgCache = null;           // pipeline/config.json (categories order, signal url)
 let pendingDumps = null;       // inbox dumps for the all view (null = not loaded)
 let openFeedbackFor = null;    // task id with the feedback form expanded
+let openEditFor = null;        // task id with the edit form expanded
+let openDumpEdit = null;       // pending-dump id being edited
 
 /* ---------------- GitHub contents API ---------------- */
 
@@ -300,6 +302,96 @@ function feedbackForm(t) {
       'goes to the next triage run — it fixes this task and calibrates future runs'));
 }
 
+function editButton(t) {
+  return el('button', {
+    class: 'ghost',
+    onclick: () => {
+      openEditFor = openEditFor === t.id ? null : t.id;
+      render(lastData);
+    },
+  }, 'edit');
+}
+
+function labeled(text, node) {
+  return el('label', { class: 'edit-label' }, text, node);
+}
+
+function editForm(t) {
+  const title = el('textarea', { rows: '2' }); title.value = t.title;
+  const notes = el('textarea', { rows: '3' }); notes.value = t.notes || '';
+  const due = el('input', { type: 'date' }); if (t.due) due.value = t.due;
+  const project = el('input', { placeholder: 'project (optional)' }); project.value = t.project || '';
+
+  const cats = [...new Set([...((cfgCache && cfgCache.categories) || []),
+    ...(t.category ? [t.category] : []), 'uncategorized'])];
+  const catSel = el('select', {});
+  for (const c of cats) catSel.append(el('option', { value: c }, c));
+  catSel.value = t.category || 'uncategorized';
+
+  const priSel = el('select', {});
+  for (const p of [1, 2, 3]) priSel.append(el('option', { value: String(p) }, `priority ${p}`));
+  priSel.value = String(t.priority || 3);
+
+  const effSel = el('select', {});
+  for (const m of [5, 15, 30, 60, 120]) effSel.append(el('option', { value: String(m) }, `~${m} min`));
+  effSel.value = String(t.effort_min || 15);
+
+  const save = el('button', {
+    class: 'primary',
+    onclick: async () => {
+      save.disabled = true;
+      try {
+        const data = await mutateTasks((d) => {
+          const x = d.tasks.find((v) => v.id === t.id);
+          if (!x) return null;
+          x.title = title.value.trim() || x.title;
+          x.notes = notes.value.trim();
+          x.due = due.value || null;
+          x.category = catSel.value === 'uncategorized' ? null : catSel.value;
+          x.priority = Number(priSel.value);
+          x.effort_min = Number(effSel.value);
+          x.project = project.value.trim() || null;
+          x.updated_at = new Date().toISOString();
+          return `edit: ${x.title.slice(0, 50)}`;
+        });
+        openEditFor = null;
+        render(data);
+      } catch (e) { save.disabled = false; flashError(e); }
+    },
+  }, 'save');
+
+  const cancel = el('button', {
+    class: 'ghost',
+    onclick: () => { openEditFor = null; render(lastData); },
+  }, 'cancel');
+
+  const del = el('button', {
+    class: 'ghost danger',
+    onclick: async () => {
+      if (!confirm('delete this task permanently? ("drop" keeps it in history instead)')) return;
+      try {
+        const data = await mutateTasks((d) => {
+          const i = d.tasks.findIndex((v) => v.id === t.id);
+          if (i < 0) return null;
+          d.tasks.splice(i, 1);
+          return `delete: ${t.title.slice(0, 50)}`;
+        });
+        openEditFor = null;
+        render(data);
+      } catch (e) { flashError(e); }
+    },
+  }, 'delete');
+
+  return el('div', { class: 'edit-form' },
+    labeled('title', title),
+    labeled('notes', notes),
+    el('div', { class: 'edit-grid' },
+      labeled('category', catSel), labeled('priority', priSel),
+      labeled('effort', effSel), labeled('due', due)),
+    labeled('project', project),
+    el('div', { class: 'manage-actions' }, save, cancel, del));
+}
+
 function questionBox(t) {
   const qbox = el('div', { class: 'question-box' },
     el('div', { class: 'q' }, `❓ ${t.question || 'Claude needs more info.'}`));
@@ -338,35 +430,43 @@ function taskRow(t, opts = {}) {
     body.append(el('div', { class: 'notes' }, t.notes));
   }
 
-  if (t.status === 'question' && !answered[t.id]) {
-    body.append(questionBox(t));
-    row.append(body, flagButton(t));
-    if (openFeedbackFor === t.id) body.append(feedbackForm(t));
+  const finish = (withFlag = true) => {
+    if (opts.manage && openEditFor === t.id) body.append(editForm(t));
+    if (withFlag && (!opts.compact || opts.manage)) {
+      row.append(flagButton(t));
+      if (openFeedbackFor === t.id) body.append(feedbackForm(t));
+    }
     return row;
-  }
-  if (t.status === 'question' && answered[t.id]) {
-    body.append(el('div', { class: 'answered-note' },
-      'answered ✓ — processing on next triage'));
-    row.append(body, flagButton(t));
-    if (openFeedbackFor === t.id) body.append(feedbackForm(t));
-    return row;
+  };
+
+  if (t.status === 'question') {
+    if (answered[t.id]) {
+      body.append(el('div', { class: 'answered-note' },
+        'answered ✓ — processing on next triage'));
+    } else {
+      body.append(questionBox(t));
+    }
+    if (opts.manage) body.append(el('div', { class: 'manage-actions' }, editButton(t)));
+    row.append(body);
+    return finish();
   }
 
   if (t.status === 'suggested') {
-    body.append(el('div', { class: 'suggest-actions' },
+    const actions = el('div', { class: 'suggest-actions' },
       el('button', { class: 'primary', onclick: () => setTaskStatus(t.id, 'todo').catch(flashError) }, 'accept'),
-      el('button', { class: 'ghost', onclick: () => setTaskStatus(t.id, 'dropped').catch(flashError) }, 'dismiss'),
-    ));
-    row.append(body, flagButton(t));
-    if (openFeedbackFor === t.id) body.append(feedbackForm(t));
-    return row;
+      el('button', { class: 'ghost', onclick: () => setTaskStatus(t.id, 'dropped').catch(flashError) }, 'dismiss'));
+    if (opts.manage) actions.append(editButton(t));
+    body.append(actions);
+    row.append(body);
+    return finish();
   }
 
   if (t.status === 'dropped') {
     body.append(el('div', { class: 'manage-actions' },
-      el('button', { class: 'ghost', onclick: () => setTaskStatus(t.id, 'todo').catch(flashError) }, 'restore')));
+      el('button', { class: 'ghost', onclick: () => setTaskStatus(t.id, 'todo').catch(flashError) }, 'restore'),
+      editButton(t)));
     row.append(body);
-    return row;
+    return finish(false);
   }
 
   // todo / done
@@ -380,23 +480,29 @@ function taskRow(t, opts = {}) {
   });
   row.append(cb, body);
 
-  if (opts.manage && t.status === 'todo') {
-    const seg = el('div', { class: 'seg' });
-    for (const b of ['today', 'week', 'someday']) {
-      seg.append(el('button', {
-        class: t.bucket === b ? 'on' : '',
-        onclick: () => setTaskBucket(t.id, b).catch(flashError),
-      }, b));
+  if (opts.manage) {
+    const actions = el('div', { class: 'manage-actions' });
+    if (t.status === 'todo') {
+      const seg = el('div', { class: 'seg' });
+      for (const b of ['today', 'week', 'someday']) {
+        seg.append(el('button', {
+          class: t.bucket === b ? 'on' : '',
+          onclick: () => setTaskBucket(t.id, b).catch(flashError),
+        }, b));
+      }
+      actions.append(seg);
     }
-    body.append(el('div', { class: 'manage-actions' }, seg,
-      el('button', { class: 'ghost danger', onclick: () => setTaskStatus(t.id, 'dropped').catch(flashError) }, 'drop')));
+    actions.append(editButton(t));
+    if (t.status === 'todo') {
+      actions.append(el('button', {
+        class: 'ghost danger',
+        onclick: () => setTaskStatus(t.id, 'dropped').catch(flashError),
+      }, 'drop'));
+    }
+    body.append(actions);
   }
 
-  if (!opts.compact || opts.manage) {
-    row.append(flagButton(t));
-    if (openFeedbackFor === t.id) body.append(feedbackForm(t));
-  }
-  return row;
+  return finish();
 }
 
 function bucketSection(key, title, cls, tasks, renderRow, countLabel) {
@@ -591,22 +697,56 @@ async function renderPendingDumps(wrap) {
     el('h2', {}, 'waiting for triage'),
     el('span', { class: 'count' }, `${pendingDumps.length}`)));
   for (const d of pendingDumps) {
-    const label = d.kind === 'feedback' ? `⚑ ${d.text}` : d.reply_to ? `↩ ${d.text}` : d.text;
-    wrap.append(el('div', { class: 'pending-dump' },
-      el('div', { class: 'txt' }, label,
-        el('div', { class: 'when' }, new Date(d.created_at).toLocaleString())),
-      el('button', {
-        class: 'ghost danger',
-        onclick: async (ev) => {
-          if (!confirm('delete this dump before triage sees it?')) return;
-          ev.target.disabled = true;
+    const txt = el('div', { class: 'txt' });
+    const parts = [txt];
+
+    if (openDumpEdit === d.id) {
+      const ta = el('textarea', { rows: '3' });
+      ta.value = d.text;
+      const save = el('button', {
+        class: 'primary',
+        onclick: async () => {
+          const v = ta.value.trim();
+          if (!v) return;
+          save.disabled = true;
           try {
-            await ghDeleteFile(d.path, d.sha, `app: delete dump ${d.id}`);
-            pendingDumps = pendingDumps.filter((x) => x.id !== d.id);
+            const updated = { ...d, text: v };
+            delete updated.sha; delete updated.path;
+            await ghPutFile(d.path, JSON.stringify(updated, null, 2) + '\n',
+              `app: edit dump ${d.id}`, d.sha);
+            openDumpEdit = null;
+            pendingDumps = null; // refetch with fresh shas
             render(lastData);
-          } catch (e) { flashError(e); }
+          } catch (e) { save.disabled = false; flashError(e); }
         },
-      }, 'delete')));
+      }, 'save');
+      const cancel = el('button', {
+        class: 'ghost',
+        onclick: () => { openDumpEdit = null; render(lastData); },
+      }, 'cancel');
+      txt.append(ta, el('div', { class: 'manage-actions' }, save, cancel));
+    } else {
+      const label = d.kind === 'feedback' ? `⚑ ${d.text}` : d.reply_to ? `↩ ${d.text}` : d.text;
+      txt.append(label, el('div', { class: 'when' }, new Date(d.created_at).toLocaleString()));
+      parts.push(el('div', { class: 'pd-actions' },
+        el('button', {
+          class: 'ghost',
+          onclick: () => { openDumpEdit = d.id; render(lastData); },
+        }, 'edit'),
+        el('button', {
+          class: 'ghost danger',
+          onclick: async (ev) => {
+            if (!confirm('delete this dump before triage sees it?')) return;
+            ev.target.disabled = true;
+            try {
+              await ghDeleteFile(d.path, d.sha, `app: delete dump ${d.id}`);
+              pendingDumps = pendingDumps.filter((x) => x.id !== d.id);
+              render(lastData);
+            } catch (e) { flashError(e); }
+          },
+        }, 'delete')));
+    }
+    wrap.append(el('div', { class: 'pending-dump' }, ...parts));
   }
 }
 
@@ -628,6 +768,8 @@ function render(data) {
 function switchView(view) {
   currentView = view;
   openFeedbackFor = null;
+  openEditFor = null;
+  openDumpEdit = null;
   document.querySelectorAll('#viewNav button').forEach((b) =>
     b.classList.toggle('active', b.dataset.view === view));
   $('#captureSection').hidden = view !== 'now';

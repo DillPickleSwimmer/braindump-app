@@ -66,7 +66,7 @@ main { padding: 0 14px 20px; max-width: 640px; margin: 0 auto; }
   margin-bottom: 14px;
 }
 
-textarea, input {
+textarea, input, select {
   width: 100%;
   background: var(--panel-2);
   color: var(--text);
@@ -77,7 +77,7 @@ textarea, input {
 }
 
 textarea { resize: vertical; min-height: 52px; }
-textarea:focus, input:focus { outline: 1px solid var(--accent-dim); }
+textarea:focus, input:focus, select:focus { outline: 1px solid var(--accent-dim); }
 
 .capture-row {
   display: flex;
@@ -271,6 +271,13 @@ button.ghost.danger { color: var(--danger); border-color: #5a3a3f; }
 }
 .pending-dump .txt { flex: 1; font-size: 14px; overflow-wrap: break-word; min-width: 0; }
 .pending-dump .when { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.pd-actions { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+
+/* ---- inline task editor ---- */
+
+.edit-form { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.edit-label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 .hint { font-size: 13px; color: var(--muted); padding: 2px 4px 8px; }
 
