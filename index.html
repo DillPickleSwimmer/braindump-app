@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14161d">
+  <title>braindump</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>braindump</h1>
+    <div id="workBanner" hidden></div>
+    <button id="gearBtn" class="icon-btn" title="Settings" aria-label="Settings">&#9881;</button>
+  </header>
+
+  <main>
+    <section id="captureSection">
+      <textarea id="captureText" rows="2"
+        placeholder="dump it — fragments, rambles, voice-to-text mess all fine"></textarea>
+      <div class="capture-row">
+        <span id="queueNote" class="muted"></span>
+        <button id="dumpBtn" class="primary">dump</button>
+      </div>
+    </section>
+
+    <div id="statusLine" class="muted" hidden></div>
+
+    <section id="listSection" aria-live="polite"></section>
+
+    <section id="settingsSection" hidden>
+      <h2>Settings</h2>
+      <label>GitHub username
+        <input id="setOwner" autocapitalize="none" autocorrect="off" placeholder="your-github-username">
+      </label>
+      <label>Data repo
+        <input id="setRepo" autocapitalize="none" autocorrect="off" value="braindump">
+      </label>
+      <label>Branch
+        <input id="setBranch" autocapitalize="none" autocorrect="off" value="main">
+      </label>
+      <label>Fine-grained personal access token
+        <input id="setToken" type="password" autocapitalize="none" autocorrect="off"
+          placeholder="github_pat_…">
+      </label>
+      <p class="muted">
+        Create at GitHub &rarr; Settings &rarr; Developer settings &rarr;
+        Fine-grained tokens. Repository access: <b>only</b> the data repo.
+        Permissions: <b>Contents &rarr; Read and write</b>, nothing else.
+        The token is stored only in this device's local storage.
+      </p>
+      <div class="capture-row">
+        <span id="settingsMsg" class="muted"></span>
+        <button id="saveSettingsBtn" class="primary">save &amp; test</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

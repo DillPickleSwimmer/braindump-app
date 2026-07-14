@@ -1,0 +1,186 @@
+:root {
+  --bg: #14161d;
+  --panel: #1d2029;
+  --panel-2: #23262f;
+  --text: #e8e9ee;
+  --muted: #8b8fa3;
+  --accent: #ffb454;
+  --accent-dim: #b97f3a;
+  --good: #7fd18a;
+  --danger: #e06c75;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 5;
+}
+
+h1 { font-size: 20px; margin: 0; flex: 0 0 auto; letter-spacing: 0.5px; }
+h1::before { content: "⚡"; margin-right: 6px; }
+
+#workBanner {
+  flex: 1;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+main { padding: 0 14px 40px; max-width: 640px; margin: 0 auto; }
+
+#captureSection {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 14px;
+}
+
+textarea, input {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid #333743;
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+}
+
+textarea { resize: vertical; min-height: 52px; }
+textarea:focus, input:focus { outline: 1px solid var(--accent-dim); }
+
+.capture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 10px;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #1a1405;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.primary:active { background: var(--accent-dim); }
+button.primary:disabled { opacity: 0.5; }
+
+button.ghost {
+  background: none;
+  border: 1px solid #3a3f4d;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.muted { color: var(--muted); font-size: 13px; }
+
+/* ---- list ---- */
+
+.bucket { margin-bottom: 10px; }
+
+.bucket-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 4px 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.bucket-header h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin: 0; color: var(--muted); }
+.bucket-header .count { font-size: 12px; color: var(--muted); }
+.bucket-header .chev { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+.bucket.today .bucket-header h2 { color: var(--accent); }
+.bucket.questions .bucket-header h2 { color: var(--danger); }
+
+.task {
+  display: flex;
+  gap: 10px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 6px;
+  align-items: flex-start;
+}
+
+.task input[type="checkbox"] {
+  width: 22px; height: 22px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.task .body { flex: 1; min-width: 0; }
+.task .title { overflow-wrap: break-word; }
+.task.done .title { text-decoration: line-through; color: var(--muted); }
+
+.task .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.chip.due { color: var(--accent); }
+.chip.overdue { color: var(--danger); }
+
+.task .notes { font-size: 13px; color: var(--muted); margin-top: 6px; white-space: pre-wrap; }
+
+.question-box { margin-top: 8px; }
+.question-box .q { font-size: 14px; color: var(--text); margin-bottom: 6px; }
+.answer-row { display: flex; gap: 8px; margin-top: 6px; }
+.answer-row input { flex: 1; }
+.answer-row button { flex: 0 0 auto; }
+.answered-note { color: var(--good); font-size: 13px; margin-top: 6px; }
+
+.suggest-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.empty { text-align: center; color: var(--muted); padding: 20px 0; font-size: 14px; }
+
+#settingsSection { background: var(--panel); border-radius: var(--radius); padding: 14px; }
+#settingsSection h2 { margin: 0 0 10px; font-size: 16px; }
+#settingsSection label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+#settingsSection input { margin-top: 4px; }
+
+.flash-ok { color: var(--good); }
+.flash-err { color: var(--danger); }
