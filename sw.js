@@ -1,7 +1,7 @@
 /* Offline shell for braindump. Data requests (GitHub API, gist) always go to
    the network; only the app shell is cached. Bump VERSION on app changes. */
 
-const VERSION = 'bd-v1';
+const VERSION = 'bd-v2';
 const SHELL = ['./', 'index.html', 'app.js', 'style.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
